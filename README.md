@@ -1,215 +1,216 @@
-[README.md](https://github.com/user-attachments/files/28600083/README.md)# Multi-Agent Reinforcement Learning for Traffic Light Control
+[README (1).md](https://github.com/user-attachments/files/28600416/README.1.md)
 
-## Project Overview
+# Telco Customer Churn Prediction
 
-This project implements a **Multi-Agent Reinforcement Learning (MARL)** system for adaptive traffic signal control in urban road networks. Each traffic light at an intersection acts as an independent learning agent that learns to optimize signal phases based on real-time traffic conditions.
+Predict whether a telecom customer will churn (leave the service) based on account
+demographics, subscribed services, and billing information. The trained
+**Random Forest** classifier is the final model — it can be reloaded from a
+pickle file and used to score new customers.
 
-### Key Features
-- **Independent Multi-Agent DQN**: Each traffic light has its own neural network
-- **Custom Traffic Simulator**: Built-in grid-based traffic simulation (no external dependencies)
-- **Real-time Visualization**: Live pygame-based traffic visualization
-- **Baseline Comparison**: Compare MARL against fixed-time traffic signals
-- **Comprehensive Metrics**: Waiting time, throughput, and reward analysis
-
----
-
-## Architecture
-
-### Multi-Agent System Design
-
-```
-Traffic Network (NxN Grid)
-    |
-    |-- Agent TL_0_0 (Intersection [0,0])
-    |-- Agent TL_0_1 (Intersection [0,1])
-    |-- Agent TL_1_0 (Intersection [1,0])
-    |-- Agent TL_1_1 (Intersection [1,1])
-    ...
-```
-
-Each agent:
-- **Observes**: Queue lengths and waiting times from each direction
-- **Decides**: Keep current phase or switch to other direction
-- **Learns**: From reward signal (negative total waiting time)
-
-### State Space (7 dimensions)
-| Feature | Description |
-|---------|-------------|
-| `queue_ns` | Number of vehicles in North-South direction |
-| `queue_ew` | Number of vehicles in East-West direction |
-| `wait_ns` | Total waiting time of NS vehicles |
-| `wait_ew` | Total waiting time of EW vehicles |
-| `ns_green` | Binary: NS has green (1) or not (0) |
-| `ew_green` | Binary: EW has green (1) or not (0) |
-| `phase_duration` | How long current phase has been active |
-
-### Action Space (2 actions)
-| Action | Description |
-|--------|-------------|
-| `0` | **Keep** current signal phase |
-| `1` | **Switch** to other phase (via yellow) |
-
-### Reward Function
-```
-Reward = - (Sum of all vehicle waiting times at intersection) / 100
-```
-The agent is penalized for vehicles waiting, encouraging it to minimize congestion.
+The full pipeline lives in
+`0e6d708d__d391edbf-441d-42c2-9516-59e7be6ed31e.ipynb`.
 
 ---
 
-## MARL Algorithm: Independent Q-Learning
+## Table of Contents
 
-We use **Independent Q-Learning** where each agent maintains its own Deep Q-Network:
-
-1. **Experience Replay**: Each agent stores experiences (s, a, r, s') in a buffer
-2. **Target Network**: Separate target network for stable learning
-3. **Epsilon-Greedy**: Exploration decays over training
-4. **Decentralized Execution**: Each agent acts independently at runtime
-
-### Neural Network Architecture
-```
-Input (7) -> Linear(7, 128) -> ReLU -> Linear(128, 128) -> ReLU -> Linear(128, 64) -> ReLU -> Linear(64, 2) -> Q-values
-```
+- [Overview](#overview)
+- [Dataset](#dataset)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Pipeline Walkthrough](#pipeline-walkthrough)
+  - [1. Data Loading & Cleaning](#1-data-loading--cleaning)
+  - [2. Exploratory Data Analysis](#2-exploratory-data-analysis)
+  - [3. Data Preprocessing](#3-data-preprocessing)
+  - [4. Handling Class Imbalance](#4-handling-class-imbalance)
+  - [5. Model Training & Selection](#5-model-training--selection)
+  - [6. Model Evaluation](#6-model-evaluation)
+  - [7. Inference on New Data](#7-inference-on-new-data)
+- [Results](#results)
+- [Saved Artifacts](#saved-artifacts)
+- [Possible Improvements](#possible-improvements)
+- [License](#license)
 
 ---
+
+## Overview
+
+Customer churn is a top concern for subscription-based businesses. This project
+builds a binary classifier that flags customers who are likely to churn so that
+retention teams can act on them. The notebook covers the full lifecycle —
+cleaning, EDA, preprocessing, training, evaluation, and a small inference demo.
+
+## Dataset
+
+- **File:** `WA_Fn-UseC_-Telco-Customer-Churn.csv`
+- **Shape:** 7,043 rows × 21 columns (20 features + target)
+- **Target:** `Churn` — `Yes` / `No` (re-encoded to `1` / `0`)
+- **Class distribution:** 5,174 retained vs. 1,869 churned (≈ 73 / 27 split — imbalanced)
+- **Feature mix:**
+  - Numerical: `tenure`, `MonthlyCharges`, `TotalCharges`
+  - Categorical: `gender`, `SeniorCitizen`, `Partner`, `Dependents`, `PhoneService`,
+    `MultipleLines`, `InternetService`, `OnlineSecurity`, `OnlineBackup`,
+    `DeviceProtection`, `TechSupport`, `StreamingTV`, `StreamingMovies`, `Contract`,
+    `PaperlessBilling`, `PaymentMethod`
+
+> The original notebook was authored in Google Colab and reads the CSV from
+> `/content/`. Update the path in **Cell 3** before running locally.
 
 ## Project Structure
 
 ```
-marl_traffic_project/
-    environment.py      # Traffic simulation environment
-    agents.py           # Multi-Agent DQN implementation
-    train.py            # Training script
-    evaluate.py         # Evaluation & comparison script
-    visualize.py        # Real-time visualization
-    run_all.py          # One-click pipeline
-    requirements.txt    # Python dependencies
-    README.md           # This file
+.
+├── 0e6d708d__d391edbf-441d-42c2-9516-59e7be6ed31e.ipynb   # Main notebook
+├── WA_Fn-UseC_-Telco-Customer-Churn.csv                    # Dataset (download separately)
+├── encoders.pkl                                            # Saved LabelEncoders (generated)
+├── customer_churn_model.pkl                                # Trained RandomForest + feature list (generated)
+└── README.md
 ```
 
----
-
-## Quick Start
-
-### Installation
+## Installation
 
 ```bash
-# Install dependencies
-pip install numpy torch pygame matplotlib tqdm
+python -m venv .venv
+source .venv/bin/activate        # on Windows: .venv\Scripts\activate
+pip install -U pip
+pip install numpy pandas matplotlib seaborn scikit-learn xgboost imbalanced-learn
 ```
 
-### Run Everything (One Command)
+Launch Jupyter and open the notebook:
 
 ```bash
-python run_all.py
+jupyter notebook
 ```
 
-This will:
-1. Train MARL agents (500 episodes, ~5 minutes)
-2. Evaluate against fixed-time baseline
-3. Generate comparison plots
-4. Save all results for your report
+## Pipeline Walkthrough
 
-### Manual Steps
+### 1. Data Loading & Cleaning
+- Loaded the CSV with pandas.
+- Dropped `customerID` (identifier, not a feature).
+- `TotalCharges` had 11 rows containing blank strings → replaced with `"0.0"`
+  and cast to `float`. All other columns are non-null.
 
-```bash
-# 1. Train agents
-python train.py --grid-size 2 --episodes 500 --plot
+### 2. Exploratory Data Analysis
+- `df.describe()` for numerical summaries.
+- Distribution + box plots for `tenure`, `MonthlyCharges`, `TotalCharges`.
+- Correlation heatmap across the three numerical features.
+- Count plots for every categorical column.
+- Confirmed class imbalance in `Churn`.
 
-# 2. Evaluate and compare
-python evaluate.py --grid-size 2 --episodes 20
+### 3. Data Preprocessing
+- Replaced target values: `Yes → 1`, `No → 0`.
+- `LabelEncoder` fit on every object-dtype column; each fitted encoder is
+  persisted in a dict and dumped to **`encoders.pkl`** so the same mapping can
+  be applied at inference time.
 
-# 3. Visualize (opens pygame window)
-python visualize.py --grid-size 2 --save-frames
+### 4. Handling Class Imbalance
+- Split 80 / 20 (`random_state=42`).
+- Applied **SMOTE** (`imblearn.over_sampling.SMOTE`) on the training set only,
+  balancing the minority class so the model doesn't bias toward "No Churn".
+
+### 5. Model Training & Selection
+Trained three classifiers with default hyperparameters and ran **5-fold
+cross-validation** on the resampled training set:
+
+| Model         | Mean CV Accuracy |
+|---------------|------------------|
+| Decision Tree | ~0.78            |
+| Random Forest | **~0.85**        |
+| XGBoost       | ~0.84            |
+
+Random Forest won, so it was retrained on the full SMOTE-augmented training
+set and used for evaluation + inference.
+
+### 6. Model Evaluation
+Evaluated the final Random Forest on the held-out test set:
+
+- **Accuracy**
+- **Confusion matrix**
+- **Precision / Recall / F1** via `classification_report`
+
+The trained model and the list of feature names are saved to
+**`customer_churn_model.pkl`**.
+
+### 7. Inference on New Data
+A demo cell constructs a single-customer dictionary, wraps it in a
+DataFrame, applies the saved encoders, and calls
+`model.predict` / `model.predict_proba` to return:
+
+```text
+Prediction: Churn / No Churn
+Prediction Probability: [P(No Churn), P(Churn)]
 ```
 
----
+## Results
 
-## Expected Results
+Random Forest is the best performer. From the notebook:
 
-After training 500 episodes on a 2x2 grid:
+- **Cross-validation accuracy (5-fold on SMOTE data):** ~0.85
+- **Test set accuracy:** reported inside Cell 79 — the confusion matrix shows
+  the model leans slightly better on the majority class, which is the
+  expected trade-off without hyperparameter tuning.
 
-| Metric | MARL | Fixed-Time | Improvement |
-|--------|------|------------|-------------|
-| Avg Waiting Time | ~15-25 steps | ~35-50 steps | **40-50% reduction** |
-| Vehicles Arrived | Higher | Lower | **10-20% increase** |
-| Adaptability | High (learns patterns) | None | Dynamic response |
+(See the notebook's printed outputs in Cells 72 and 79 for exact numbers.)
 
-The MARL system learns to:
-- Give longer green to busier directions
-- Coordinate implicitly through shared traffic state
-- Adapt to varying traffic patterns
+## Saved Artifacts
 
----
+| File                       | Contents                                            |
+|----------------------------|-----------------------------------------------------|
+| `encoders.pkl`             | Dict of `column → fitted LabelEncoder`              |
+| `customer_churn_model.pkl` | Dict: `{"model": RandomForest, "features_names": []}` |
 
-## Implementation Details
+Example inference script:
 
-### Traffic Simulation
-- Grid-based road network with configurable size
-- Vehicles spawn at edges and travel to opposite sides
-- Simple car-following model with collision avoidance
-- Traffic lights with green/yellow/red phases
+```python
+import pickle, pandas as pd
 
-### Training Parameters
-| Parameter | Value |
-|-----------|-------|
-| Episodes | 500 |
-| Max Steps/Episode | 500 |
-| Learning Rate | 0.001 |
-| Discount Factor | 0.95 |
-| Batch Size | 32 |
-| Replay Buffer | 5000 |
-| Epsilon Start | 1.0 |
-| Epsilon End | 0.05 |
-| Epsilon Decay | 0.995 |
-| Target Update | Every 100 steps |
-| Hidden Layer | 128 units |
+with open("customer_churn_model.pkl", "rb") as f:
+    bundle = pickle.load(f)
+model, feature_names = bundle["model"], bundle["features_names"]
 
----
+with open("encoders.pkl", "rb") as f:
+    encoders = pickle.load(f)
 
-## Extensions & Future Work
+sample = {
+    "gender": "Female", "SeniorCitizen": 0, "Partner": "Yes",
+    "Dependents": "No", "tenure": 1, "PhoneService": "No",
+    "MultipleLines": "No phone service", "InternetService": "DSL",
+    "OnlineSecurity": "No", "OnlineBackup": "Yes",
+    "DeviceProtection": "No", "TechSupport": "No",
+    "StreamingTV": "No", "StreamingMovies": "No",
+    "Contract": "Month-to-month", "PaperlessBilling": "Yes",
+    "PaymentMethod": "Electronic check",
+    "MonthlyCharges": 29.85, "TotalCharges": 29.85,
+}
 
-1. **Communication Between Agents**: Share intended actions with neighbors
-2. **Centralized Training with Decentralized Execution (CTDE)**: Use QMIX or MAPPO
-3. **SUMO Integration**: Use realistic SUMO simulator with real road networks
-4. **Larger Grids**: Scale to 4x4, 8x8, or city-scale networks
-5. **Heterogeneous Traffic**: Add different vehicle types, pedestrians, emergency vehicles
-6. **Multi-Objective**: Optimize for emissions and fuel consumption too
+df = pd.DataFrame([sample])
+for col, enc in encoders.items():
+    df[col] = enc.transform(df[col])
 
----
+print("Churn" if model.predict(df)[0] == 1 else "No Churn")
+print("Probabilities:", model.predict_proba(df))
+```
 
-## References
+## Possible Improvements
 
-1. Bakker et al. - "Traffic Light Control by Multiagent Reinforcement Learning Systems"
-2. Wei et al. - "A Novel Multi-Agent Deep RL Approach for Traffic Signal Control" (2023)
-3. SUMO-RL: https://github.com/LucasAlegre/sumo-rl
-4. PettingZoo: https://pettingzoo.farama.org/
-5. PyTSC: "A Unified Platform for Multi-Agent RL in Traffic Signal Control" (2025)
+The notebook's own "To do" list (Cell 87):
 
----
+1. Hyperparameter tuning (`GridSearchCV` / `Optuna`).
+2. Better model selection / ensembling.
+3. Try **downsampling** the majority class as an alternative to SMOTE.
+4. Reduce overfitting (limit depth, regularization, more trees with lower variance).
+5. **Stratified k-fold CV** to preserve the class ratio per fold.
 
-## For Your Project Report
+Other ideas worth trying:
 
-### Suggested Report Structure
-1. **Introduction** - Traffic congestion problem, need for adaptive control
-2. **Literature Review** - MARL approaches to traffic signal control
-3. **Methodology** - Your system design (use diagrams from this README)
-4. **Implementation** - Code structure, algorithms used
-5. **Experiments** - Training setup, parameters
-6. **Results** - Include the generated plots (comparison.png, distributions.png)
-7. **Conclusion** - MARL outperforms fixed-time control
-8. **Future Work** - Extensions mentioned above
+- One-hot encoding for nominal features (avoid imposing an ordinal meaning).
+- Feature engineering: `tenure × MonthlyCharges`, service count, average monthly change.
+- Calibration curves and threshold tuning to favor recall on the churn class.
+- Persist preprocessing in a `Pipeline` / `ColumnTransformer` so train and
+  inference never drift.
 
-### Key Points to Highlight
-- Each traffic light is an independent RL agent
-- Uses Deep Q-Network for function approximation
-- Reward function minimizes vehicle waiting time
-- Outperforms traditional fixed-time traffic signals
-- Scalable to larger networks
+## License
 
----
-
-**Author**: BE 6th Semester Project
-**Topic**: Multi-Agent Reinforcement Learning for Traffic Light Control
-**Date**: 2026
-
+This project is for educational purposes. The Telco Customer Churn dataset is
+publicly available from IBM / Kaggle — please follow the original source's
+licensing terms.
